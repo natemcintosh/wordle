@@ -72,7 +72,12 @@ fn get_word_input() -> Vec<(char, char)> {
         .split_ascii_whitespace()
         .map(|s| s.chars().take(2).collect::<Vec<char>>())
         .collect();
-    assert!(new_words.len() == 5, "Did not get 5 pairs");
+
+    // If not 5 pairs, restart process
+    if new_words.len() != 5 {
+        println!("Please enter exactly five pairs");
+        return get_word_input();
+    }
 
     // Convert the inner vec to a tuple
     let new_words: Vec<(char, char)> = new_words
@@ -84,11 +89,21 @@ fn get_word_input() -> Vec<(char, char)> {
     new_words
 }
 
+fn word_is_valid(s: &str, word_options: &[HashSet<char>]) -> bool {
+    // Assumes that `s` has length 5
+    for (letter, good_letters) in s.chars().zip(word_options.iter()) {
+        if !good_letters.contains(&letter) {
+            return false;
+        }
+    }
+    true
+}
+
 fn main() {
     let input_str = std::fs::read_to_string("american_english_dictionary.txt")
         .expect("Could not read dictionary");
 
-    let valid_lowercase_words: Vec<String> = input_str
+    let mut valid_words: Vec<String> = input_str
         .lines()
         // Filter out anything with an apostrophe
         .filter(|&s| !s.ends_with("'s"))
@@ -100,6 +115,33 @@ fn main() {
         .sorted()
         .dedup()
         .collect();
+
+    let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
+    let mut word_options: Vec<HashSet<char>> = vec![
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+    ];
+
+    // Now the main loop
+    for _ in 1..=6 {
+        // Ask the user for input
+        println!("\nPlease enter your input letters and their color");
+
+        // Get the user's input
+        let user_input = get_word_input();
+
+        // Update which letters can be used where
+        word_options = update_available_letters(user_input, &word_options);
+
+        // Update the list of available words
+        valid_words.retain(|s| word_is_valid(s, &word_options));
+
+        // Tell the user about them
+        println!("\n\n{:?}", &valid_words);
+    }
 }
 
 #[test]
