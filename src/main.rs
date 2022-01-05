@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 fn update_available_letters(
-    new_words: Vec<(char, char)>,
+    new_words: &[(char, char)],
     word_options: &[HashSet<char>],
-) -> Vec<HashSet<char>> {
+) -> (Vec<HashSet<char>>, Vec<(usize, char)>) {
     // Gather the black letters
     let black_letters: HashSet<char> = new_words
         .iter()
@@ -32,11 +32,11 @@ fn update_available_letters(
         .map(|(idx, v)| (idx, v.0))
         .collect();
 
-    // Create the result array
-    let result = word_options.clone();
+    // Create the result array as a copy of the input
+    let result = word_options.to_vec();
 
     // Remove the black letters from all positions
-    let mut result: Vec<HashSet<char>> = result
+    let mut available_letters: Vec<HashSet<char>> = result
         .iter()
         .map(|letters| {
             letters
@@ -47,21 +47,21 @@ fn update_available_letters(
         .collect();
 
     // Remove the yellow letters from their specified positions
-    yellow_letters.iter().for_each(|(idx, letter)| {
-        let _ = result[*idx].remove(letter);
-    });
+    for (idx, letter) in &yellow_letters {
+        let _ = available_letters[*idx].remove(letter);
+    }
 
     // Remove everything but the green letters at their indices
-    green_letters.iter().for_each(|(idx, letter)| {
-        result[*idx] = HashSet::from([*letter]);
-    });
+    for (idx, letter) in green_letters {
+        available_letters[idx] = HashSet::from([letter]);
+    }
 
-    result
+    (available_letters, yellow_letters)
 }
 
 fn get_word_input() -> Vec<(char, char)> {
     // Get input from the user
-    let _ = std::io::Write::flush(&mut std::io::stdout());
+    let _droppable = std::io::Write::flush(&mut std::io::stdout());
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)
@@ -89,7 +89,21 @@ fn get_word_input() -> Vec<(char, char)> {
     new_words
 }
 
-fn word_is_valid(s: &str, word_options: &[HashSet<char>]) -> bool {
+fn word_is_valid(
+    s: &str,
+    word_options: &[HashSet<char>],
+    yellow_letters: &[(usize, char)],
+) -> bool {
+    // First check to see if all the yellow letters appear, and that they are not in places they shouldn't be
+    if !yellow_letters.iter().all(|(bad_idx, letter)| {
+        s.chars()
+            .enumerate()
+            .filter(|(idx, _)| idx != bad_idx)
+            .any(|(_, letter_to_check)| letter_to_check == *letter)
+    }) {
+        return false;
+    }
+
     // Assumes that `s` has length 5
     for (letter, good_letters) in s.chars().zip(word_options.iter()) {
         if !good_letters.contains(&letter) {
@@ -110,7 +124,7 @@ fn main() {
         // Filter out anything that is not 5 letters
         .filter(|&s| s.len() == 5)
         // Convert all to lowercase
-        .map(|s| s.to_lowercase())
+        .map(str::to_lowercase)
         // Remove duplicates by sorting and deduping
         .sorted()
         .dedup()
@@ -122,7 +136,7 @@ fn main() {
         alphabet.clone(),
         alphabet.clone(),
         alphabet.clone(),
-        alphabet.clone(),
+        alphabet,
     ];
 
     // Now the main loop
@@ -134,10 +148,12 @@ fn main() {
         let user_input = get_word_input();
 
         // Update which letters can be used where
-        word_options = update_available_letters(user_input, &word_options);
+        let r = update_available_letters(&user_input, &word_options);
+        word_options = r.0;
+        let yellow_letters = r.1;
 
         // Update the list of available words
-        valid_words.retain(|s| word_is_valid(s, &word_options));
+        valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
 
         // Tell the user about them
         println!("\n\n{:?}", &valid_words);
@@ -152,7 +168,7 @@ fn test_update_1() {
         alphabet.clone(),
         alphabet.clone(),
         alphabet.clone(),
-        alphabet.clone(),
+        alphabet,
     ];
 
     let input_letters = vec![('a', 'b'), ('b', 'g'), ('c', 'y'), ('d', 'b'), ('e', 'g')];
@@ -164,7 +180,7 @@ fn test_update_1() {
         HashSet::from(['e']),
     ];
 
-    let got = update_available_letters(input_letters, &word_options);
+    let (got, _) = update_available_letters(&input_letters, &word_options);
     for (idx, (expectedi, goti)) in expected.iter().zip(got.iter()).enumerate() {
         assert_eq!(expectedi, goti, "index {} did not match", idx);
     }
