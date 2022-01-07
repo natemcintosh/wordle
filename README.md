@@ -16,3 +16,6 @@ and it color: `b` for black, `y` for yellow, and `g` for green.
 1. The program will then tell you what words are available and ask you to enter the new data you got 
 from the website
 1. Repeat the process until you win
+
+### Future Improvment
+Based on frequency of letters used in English, suggest a best option of the available words
