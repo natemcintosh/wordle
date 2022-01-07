@@ -2,6 +2,11 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
+const _LETTER_FREQUENCY: [char; 26] = [
+    'e', 'a', 'r', 'i', 'o', 't', 'n', 's', 'l', 'c', 'u', 'd', 'p', 'm', 'h', 'g', 'b', 'f', 'y',
+    'w', 'k', 'v', 'x', 'z', 'j', 'q',
+];
+
 fn update_available_letters(
     new_words: &[(char, char)],
     word_options: &[HashSet<char>],
@@ -157,6 +162,11 @@ fn main() {
 
         // Tell the user about them
         println!("\n\n{:?}", &valid_words);
+
+        // Exit if `valid_words.len() <= 1`
+        if valid_words.len() <= 1 {
+            break;
+        }
     }
 }
 
