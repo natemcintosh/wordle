@@ -18,4 +18,4 @@ from the website
 1. Repeat the process until you win
 
 ### Future Improvment
-Based on frequency of letters used in English, suggest a best option of the available words
+Based on frequency of letters used in English, and attempting to eliminate as many letters as possible, suggest a best option of the available words.
