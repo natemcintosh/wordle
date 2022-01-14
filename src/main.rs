@@ -164,7 +164,7 @@ fn main() {
         // Filter out anything that is not 5 letters
         .filter(|s| s.len() == 5)
         // Filter out anything with an apostrophe
-        .filter(|s| !s.contains("'"))
+        .filter(|s| !s.contains('\''))
         // Make sure everything is ascii
         .filter(|s| s.is_ascii())
         // Convert all to lowercase
