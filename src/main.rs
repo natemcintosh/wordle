@@ -2,9 +2,33 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-const _LETTER_FREQUENCY: [char; 26] = [
-    'e', 'a', 'r', 'i', 'o', 't', 'n', 's', 'l', 'c', 'u', 'd', 'p', 'm', 'h', 'g', 'b', 'f', 'y',
-    'w', 'k', 'v', 'x', 'z', 'j', 'q',
+const LETTER_FREQUENCY: [(char, f32); 26] = [
+    ('e', 56.88),
+    ('a', 43.31),
+    ('r', 38.64),
+    ('i', 38.45),
+    ('o', 36.51),
+    ('t', 35.43),
+    ('n', 33.92),
+    ('s', 29.23),
+    ('l', 27.98),
+    ('c', 23.13),
+    ('u', 18.51),
+    ('d', 17.25),
+    ('p', 16.14),
+    ('m', 15.36),
+    ('h', 15.31),
+    ('g', 12.59),
+    ('b', 10.56),
+    ('f', 9.24),
+    ('y', 9.06),
+    ('w', 6.57),
+    ('k', 5.61),
+    ('v', 5.13),
+    ('x', 1.48),
+    ('z', 1.39),
+    ('j', 1.00),
+    ('q', 1.00),
 ];
 
 fn update_available_letters(
@@ -85,11 +109,7 @@ fn get_word_input() -> Vec<(char, char)> {
     }
 
     // Convert the inner vec to a tuple
-    let new_words: Vec<(char, char)> = new_words
-        .iter()
-        .inspect(|v| assert!(v.len() == 2))
-        .map(|v| (v[0], v[1]))
-        .collect();
+    let new_words: Vec<(char, char)> = new_words.iter().map(|v| (v[0], v[1])).collect();
 
     new_words
 }
@@ -118,21 +138,52 @@ fn word_is_valid(
     true
 }
 
+fn score_word(word: &str) -> f32 {
+    // Get the unique characters
+    word.chars()
+        .sorted()
+        .dedup()
+        // Get the score from each
+        .map(|letter_to_find| {
+            LETTER_FREQUENCY
+                .iter()
+                .find(|(l, _)| *l == letter_to_find)
+                .expect("Found an alien letter")
+                .1
+        })
+        .sum()
+}
+
 fn main() {
     let input_str = std::fs::read_to_string("american_english_dictionary.txt")
         .expect("Could not read dictionary");
 
-    let mut valid_words: Vec<String> = input_str
+    let mut words_and_scores: Vec<(String, f32)> = input_str
         .lines()
-        // Filter out anything with an apostrophe
-        .filter(|&s| !s.ends_with("'s"))
+        .map(str::trim)
         // Filter out anything that is not 5 letters
-        .filter(|&s| s.len() == 5)
+        .filter(|s| s.len() == 5)
+        // Filter out anything with an apostrophe
+        .filter(|s| !s.contains("'"))
+        // Make sure everything is ascii
+        .filter(|s| s.is_ascii())
         // Convert all to lowercase
-        .map(str::to_lowercase)
+        .map(str::to_ascii_lowercase)
         // Remove duplicates by sorting and deduping
         .sorted()
         .dedup()
+        // Sort them by how common their letters are
+        .map(|word| (word.clone(), score_word(&word)))
+        .collect();
+
+    words_and_scores
+        .sort_unstable_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap());
+
+    let mut valid_words: Vec<String> = words_and_scores
+        .iter()
+        .rev()
+        .map(|(word, _)| word)
+        .cloned()
         .collect();
 
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
@@ -194,4 +245,12 @@ fn test_update_1() {
     for (idx, (expectedi, goti)) in expected.iter().zip(got.iter()).enumerate() {
         assert_eq!(expectedi, goti, "index {} did not match", idx);
     }
+}
+
+#[test]
+fn test_score_word_1() {
+    let word = "hello";
+    let got = score_word(word);
+    let expected: f32 = 56.88 + 36.51 + 27.98 + 15.31;
+    assert_eq!(expected, got);
 }
