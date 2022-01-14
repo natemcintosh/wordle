@@ -1,35 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-
-const LETTER_FREQUENCY: [(char, f32); 26] = [
-    ('e', 56.88),
-    ('a', 43.31),
-    ('r', 38.64),
-    ('i', 38.45),
-    ('o', 36.51),
-    ('t', 35.43),
-    ('n', 33.92),
-    ('s', 29.23),
-    ('l', 27.98),
-    ('c', 23.13),
-    ('u', 18.51),
-    ('d', 17.25),
-    ('p', 16.14),
-    ('m', 15.36),
-    ('h', 15.31),
-    ('g', 12.59),
-    ('b', 10.56),
-    ('f', 9.24),
-    ('y', 9.06),
-    ('w', 6.57),
-    ('k', 5.61),
-    ('v', 5.13),
-    ('x', 1.48),
-    ('z', 1.39),
-    ('j', 1.00),
-    ('q', 1.00),
-];
 
 fn update_available_letters(
     new_words: &[(char, char)],
@@ -138,23 +109,50 @@ fn word_is_valid(
     true
 }
 
-fn score_word(word: &str) -> f32 {
+fn score_word(word: &str, letter_frequency: &HashMap<char, f32>) -> f32 {
     // Get the unique characters
     word.chars()
         .sorted()
         .dedup()
         // Get the score from each
         .map(|letter_to_find| {
-            LETTER_FREQUENCY
-                .iter()
-                .find(|(l, _)| *l == letter_to_find)
+            letter_frequency
+                .get(&letter_to_find)
                 .expect("Found an alien letter")
-                .1
         })
         .sum()
 }
 
 fn main() {
+    let letter_frequency: HashMap<char, f32> = HashMap::from([
+        ('e', 56.88),
+        ('a', 43.31),
+        ('r', 38.64),
+        ('i', 38.45),
+        ('o', 36.51),
+        ('t', 35.43),
+        ('n', 33.92),
+        ('s', 29.23),
+        ('l', 27.98),
+        ('c', 23.13),
+        ('u', 18.51),
+        ('d', 17.25),
+        ('p', 16.14),
+        ('m', 15.36),
+        ('h', 15.31),
+        ('g', 12.59),
+        ('b', 10.56),
+        ('f', 9.24),
+        ('y', 9.06),
+        ('w', 6.57),
+        ('k', 5.61),
+        ('v', 5.13),
+        ('x', 1.48),
+        ('z', 1.39),
+        ('j', 1.00),
+        ('q', 1.00),
+    ]);
+
     let input_str = std::fs::read_to_string("american_english_dictionary.txt")
         .expect("Could not read dictionary");
 
@@ -173,7 +171,7 @@ fn main() {
         .sorted()
         .dedup()
         // Sort them by how common their letters are
-        .map(|word| (word.clone(), score_word(&word)))
+        .map(|word| (word.clone(), score_word(&word, &letter_frequency)))
         .collect();
 
     words_and_scores
@@ -185,6 +183,9 @@ fn main() {
         .map(|(word, _)| word)
         .cloned()
         .collect();
+
+    let best_starting_word = valid_words[0].clone();
+    println!("The best starting word is {best_starting_word}");
 
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut word_options: Vec<HashSet<char>> = vec![
@@ -199,6 +200,7 @@ fn main() {
     for _ in 1..=6 {
         // Ask the user for input
         println!("\nPlease enter your input letters and their color");
+        println!("The words suggested are in order of most helpful to least");
 
         // Get the user's input
         let user_input = get_word_input();
@@ -249,8 +251,36 @@ fn test_update_1() {
 
 #[test]
 fn test_score_word_1() {
+    let letter_frequency: HashMap<char, f32> = HashMap::from([
+        ('e', 56.88),
+        ('a', 43.31),
+        ('r', 38.64),
+        ('i', 38.45),
+        ('o', 36.51),
+        ('t', 35.43),
+        ('n', 33.92),
+        ('s', 29.23),
+        ('l', 27.98),
+        ('c', 23.13),
+        ('u', 18.51),
+        ('d', 17.25),
+        ('p', 16.14),
+        ('m', 15.36),
+        ('h', 15.31),
+        ('g', 12.59),
+        ('b', 10.56),
+        ('f', 9.24),
+        ('y', 9.06),
+        ('w', 6.57),
+        ('k', 5.61),
+        ('v', 5.13),
+        ('x', 1.48),
+        ('z', 1.39),
+        ('j', 1.00),
+        ('q', 1.00),
+    ]);
     let word = "hello";
-    let got = score_word(word);
+    let got = score_word(word, &letter_frequency);
     let expected: f32 = 56.88 + 36.51 + 27.98 + 15.31;
     assert_eq!(expected, got);
 }
