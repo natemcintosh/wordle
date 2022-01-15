@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    char,
+    collections::{HashMap, HashSet},
+};
 
 use itertools::Itertools;
 
@@ -159,6 +162,8 @@ fn main() {
     let mut words_and_scores: Vec<(String, f32)> = input_str
         .lines()
         .map(str::trim)
+        // Filter out anything with a capital letter
+        .filter(|s| !s.contains(char::is_uppercase))
         // Filter out anything that is not 5 letters
         .filter(|s| s.len() == 5)
         // Filter out anything with an apostrophe
