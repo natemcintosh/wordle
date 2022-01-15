@@ -127,6 +127,7 @@ fn score_word(word: &str, letter_frequency: &HashMap<char, f32>) -> f32 {
 }
 
 fn main() {
+    let start_time = std::time::Instant::now();
     let letter_frequency: HashMap<char, f32> = HashMap::from([
         ('e', 56.88),
         ('a', 43.31),
@@ -159,7 +160,7 @@ fn main() {
     let input_str = std::fs::read_to_string("american_english_dictionary.txt")
         .expect("Could not read dictionary");
 
-    let mut words_and_scores: Vec<(String, f32)> = input_str
+    let mut words_and_scores: Vec<(&str, f32)> = input_str
         .lines()
         .map(str::trim)
         // Filter out anything with a capital letter
@@ -170,26 +171,24 @@ fn main() {
         .filter(|s| !s.contains('\''))
         // Make sure everything is ascii
         .filter(|s| s.is_ascii())
-        // Convert all to lowercase
-        .map(str::to_ascii_lowercase)
         // Remove duplicates by sorting and deduping
         .sorted()
         .dedup()
         // Sort them by how common their letters are
-        .map(|word| (word.clone(), score_word(&word, &letter_frequency)))
+        .map(|word| (word, score_word(word, &letter_frequency)))
         .collect();
 
     words_and_scores
         .sort_unstable_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap());
 
-    let mut valid_words: Vec<String> = words_and_scores
+    let mut valid_words: Vec<&str> = words_and_scores
         .iter()
         .rev()
         .map(|(word, _)| word)
-        .cloned()
+        .copied()
         .collect();
 
-    let best_starting_word = valid_words[0].clone();
+    let best_starting_word = valid_words[0];
     println!("The best starting word is {best_starting_word}");
 
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
@@ -200,6 +199,8 @@ fn main() {
         alphabet.clone(),
         alphabet,
     ];
+
+    println!("Startup took {} ms", start_time.elapsed().as_millis());
 
     // Now the main loop
     for _ in 1..=6 {
