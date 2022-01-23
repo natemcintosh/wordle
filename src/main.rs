@@ -112,7 +112,7 @@ fn word_is_valid(
     true
 }
 
-fn score_word(word: &str, letter_frequency: &HashMap<char, f32>) -> f32 {
+fn score_word(word: &str, letter_frequency: &HashMap<char, usize>) -> usize {
     // Get the unique characters
     word.chars()
         .sorted()
@@ -128,64 +128,22 @@ fn score_word(word: &str, letter_frequency: &HashMap<char, f32>) -> f32 {
 
 fn main() {
     let start_time = std::time::Instant::now();
-    let letter_frequency: HashMap<char, f32> = HashMap::from([
-        ('e', 56.88),
-        ('a', 43.31),
-        ('r', 38.64),
-        ('i', 38.45),
-        ('o', 36.51),
-        ('t', 35.43),
-        ('n', 33.92),
-        ('s', 29.23),
-        ('l', 27.98),
-        ('c', 23.13),
-        ('u', 18.51),
-        ('d', 17.25),
-        ('p', 16.14),
-        ('m', 15.36),
-        ('h', 15.31),
-        ('g', 12.59),
-        ('b', 10.56),
-        ('f', 9.24),
-        ('y', 9.06),
-        ('w', 6.57),
-        ('k', 5.61),
-        ('v', 5.13),
-        ('x', 1.48),
-        ('z', 1.39),
-        ('j', 1.00),
-        ('q', 1.00),
-    ]);
 
-    let input_str = std::fs::read_to_string("american_english_dictionary.txt")
-        .expect("Could not read dictionary");
+    let input_str =
+        std::fs::read_to_string("allowed_words.txt").expect("Could not read dictionary");
 
-    let mut words_and_scores: Vec<(&str, f32)> = input_str
-        .lines()
-        .map(str::trim)
-        // Filter out anything with a capital letter
-        .filter(|s| !s.contains(char::is_uppercase))
-        // Filter out anything that is not 5 letters
-        .filter(|s| s.len() == 5)
-        // Filter out anything with an apostrophe
-        .filter(|s| !s.contains('\''))
-        // Make sure everything is ascii
-        .filter(|s| s.is_ascii())
-        // Remove duplicates by sorting and deduping
-        .sorted()
-        .dedup()
-        // Sort them by how common their letters are
-        .map(|word| (word, score_word(word, &letter_frequency)))
-        .collect();
+    let words: Vec<&str> = input_str.lines().collect();
 
-    words_and_scores
-        .sort_unstable_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap());
+    // Get the frequency of letters in the target list
+    let letter_frequency = words.iter().flat_map(|s| s.chars()).counts();
 
-    let mut valid_words: Vec<&str> = words_and_scores
+    // Score the words, and sort them by their score, highest to smallest.
+    let mut valid_words: Vec<&str> = words
         .iter()
+        .map(|word| (word, score_word(word, &letter_frequency)))
+        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+        .map(|(word, _)| *word)
         .rev()
-        .map(|(word, _)| word)
-        .copied()
         .collect();
 
     let best_starting_word = valid_words[0];
@@ -257,36 +215,36 @@ fn test_update_1() {
 
 #[test]
 fn test_score_word_1() {
-    let letter_frequency: HashMap<char, f32> = HashMap::from([
-        ('e', 56.88),
-        ('a', 43.31),
-        ('r', 38.64),
-        ('i', 38.45),
-        ('o', 36.51),
-        ('t', 35.43),
-        ('n', 33.92),
-        ('s', 29.23),
-        ('l', 27.98),
-        ('c', 23.13),
-        ('u', 18.51),
-        ('d', 17.25),
-        ('p', 16.14),
-        ('m', 15.36),
-        ('h', 15.31),
-        ('g', 12.59),
-        ('b', 10.56),
-        ('f', 9.24),
-        ('y', 9.06),
-        ('w', 6.57),
-        ('k', 5.61),
-        ('v', 5.13),
-        ('x', 1.48),
-        ('z', 1.39),
-        ('j', 1.00),
-        ('q', 1.00),
+    let letter_frequency: HashMap<char, usize> = HashMap::from([
+        ('a', 979),
+        ('v', 153),
+        ('u', 467),
+        ('r', 899),
+        ('s', 669),
+        ('f', 230),
+        ('p', 367),
+        ('w', 195),
+        ('o', 754),
+        ('b', 281),
+        ('t', 729),
+        ('g', 311),
+        ('k', 210),
+        ('e', 1233),
+        ('h', 389),
+        ('i', 671),
+        ('m', 316),
+        ('d', 393),
+        ('n', 575),
+        ('j', 27),
+        ('l', 719),
+        ('c', 477),
+        ('q', 29),
+        ('y', 425),
+        ('x', 37),
+        ('z', 40),
     ]);
     let word = "hello";
     let got = score_word(word, &letter_frequency);
-    let expected: f32 = 56.88 + 36.51 + 27.98 + 15.31;
+    let expected: usize = 1233 + 389 + 719 + 754;
     assert_eq!(expected, got);
 }
