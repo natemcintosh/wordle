@@ -196,6 +196,85 @@ fn guess_word(word_to_guess: &str, input_words: &[&str]) -> u8 {
     n_guesses
 }
 
+/// The idea here is to attempt a different method. It will provide the "best" word as a
+/// first option, and then the next best word that contains none of the same letters
+/// as in the first. E.g. "later" and then "sonic". It then continues on from there as
+/// done before
+fn method_2(words_in: &[&str]) {
+    // Make a mutable copy of `valid_words`
+    let mut valid_words: Vec<&str> = words_in.iter().copied().collect();
+
+    let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
+    let mut word_options: Vec<HashSet<char>> = vec![
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet,
+    ];
+
+    // Get the best starting word, and the next best word after that
+    let best_starting_word = valid_words[0];
+    let second_word = words_in
+        .iter()
+        .find(|&&s| !s.chars().any(|c| best_starting_word.contains(c)))
+        .expect("Could not find a second best word");
+
+    println!("First enter '{best_starting_word}'");
+    println!("What is the result?");
+
+    // Get the user's input
+    let user_input = get_word_input();
+
+    // Update which letters can be used where
+    let r = update_available_letters(&user_input, &word_options);
+    word_options = r.0;
+    let yellow_letters = r.1;
+
+    // Update the list of available words
+    valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    println!("\nNow enter '{}'", second_word);
+    println!("What is the result?");
+
+    // Get the user's input
+    let user_input = get_word_input();
+
+    // Update which letters can be used where
+    let r = update_available_letters(&user_input, &word_options);
+    word_options = r.0;
+    let yellow_letters = r.1;
+
+    // Update the list of available words
+    valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    // Loop for the remaining 4 turns
+    for _ in 1..=4 {
+        // Ask the user for input
+        println!("\nPlease enter your input letters and their color");
+        println!("The words suggested are in order of most helpful to least");
+
+        // Get the user's input
+        let user_input = get_word_input();
+
+        // Update which letters can be used where
+        let r = update_available_letters(&user_input, &word_options);
+        word_options = r.0;
+        let yellow_letters = r.1;
+
+        // Update the list of available words
+        valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+        // Tell the user about them
+        println!("\n\n{:?}", &valid_words);
+
+        // Exit if `valid_words.len() <= 1`
+        if valid_words.len() <= 1 {
+            break;
+        }
+    }
+}
+
 /// This program will help you solve wordle more quickly.
 /// Run with no arguments to have it help you.
 #[derive(Parser, Debug)]
@@ -204,6 +283,10 @@ struct Args {
     /// Run the efficiency tests?
     #[clap(short, long)]
     run_tests: bool,
+
+    /// Use the alternative method
+    #[clap(short, long)]
+    alternative_method: bool,
 }
 
 fn main() {
@@ -254,6 +337,11 @@ fn main() {
         );
 
         // Exit
+        return;
+    }
+
+    if args.alternative_method {
+        method_2(&valid_words);
         return;
     }
 
