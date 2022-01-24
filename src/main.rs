@@ -3,6 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
+use clap::Parser;
 use itertools::Itertools;
 
 fn update_available_letters(
@@ -126,6 +127,85 @@ fn score_word(word: &str, letter_frequency: &HashMap<char, usize>) -> usize {
         .sum()
 }
 
+fn mimic_user_input(correct_word: &str, current_guess: &str) -> Vec<(char, char)> {
+    // Assuming both are strings of length 5
+    correct_word
+        .chars()
+        .zip(current_guess.chars())
+        .map(|(correct_letter, guessed_letter)| {
+            if guessed_letter == correct_letter {
+                (guessed_letter, 'g')
+            } else if correct_word.contains(guessed_letter) {
+                (guessed_letter, 'y')
+            } else {
+                (guessed_letter, 'b')
+            }
+        })
+        .collect()
+}
+
+/// If we already have a word in mind, count how many guesses are required to get it
+fn guess_word(word_to_guess: &str, input_words: &[&str]) -> u8 {
+    let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
+    let mut word_options: Vec<HashSet<char>> = vec![
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet.clone(),
+        alphabet,
+    ];
+
+    let mut valid_words: Vec<&str> = input_words.iter().copied().collect();
+
+    let mut current_guess = valid_words[0];
+
+    let mut n_guesses: u8 = 0;
+    // Loop until we find the word
+    loop {
+        n_guesses += 1;
+
+        if current_guess == word_to_guess {
+            break;
+        }
+
+        if n_guesses > 20 {
+            println!("Could not {word_to_guess} after 20 guesses");
+            break;
+        }
+
+        // Generate what would be the user's input.
+        let user_input = mimic_user_input(word_to_guess, current_guess);
+
+        // Update which letters can be used where
+        let r = update_available_letters(&user_input, &word_options);
+        word_options = r.0;
+        let yellow_letters = r.1;
+
+        // Update the list of available words
+        valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+        // Exit if no more words are available
+        if valid_words.is_empty() {
+            break;
+        }
+
+        // Update current best guess.
+        current_guess = valid_words[0];
+    }
+
+    n_guesses
+}
+
+/// This program will help you solve wordle more quickly.
+/// Run with no arguments to have it help you.
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Run the efficiency tests?
+    #[clap(short, long)]
+    run_tests: bool,
+}
+
 fn main() {
     let start_time = std::time::Instant::now();
 
@@ -141,10 +221,41 @@ fn main() {
     let mut valid_words: Vec<&str> = words
         .iter()
         .map(|word| (word, score_word(word, &letter_frequency)))
-        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+        .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
         .map(|(word, _)| *word)
-        .rev()
         .collect();
+
+    let args = Args::parse();
+    if args.run_tests {
+        // Start a timer for the tests
+        let test_time = std::time::Instant::now();
+
+        // Print out headers
+        println!("word,n_guesses");
+
+        // Count how long it takes to guess each word
+        valid_words
+            .iter()
+            .map(|word| (*word, guess_word(word, &valid_words)))
+            .sorted_by(|(_, count1), (_, count2)| Ord::cmp(count1, count2))
+            .for_each(|(word, count)| println!("{word},{count}"));
+
+        // Print out how long it took to guess for all words
+        println!(
+            "Testing {} words took {} ms",
+            valid_words.len(),
+            test_time.elapsed().as_millis()
+        );
+
+        // Print out how long it took to run everything
+        println!(
+            "Running the program took {} ms",
+            start_time.elapsed().as_millis()
+        );
+
+        // Exit
+        return;
+    }
 
     let best_starting_word = valid_words[0];
     println!("The best starting word is {best_starting_word}");
@@ -216,35 +327,110 @@ fn test_update_1() {
 #[test]
 fn test_score_word_1() {
     let letter_frequency: HashMap<char, usize> = HashMap::from([
-        ('a', 979),
-        ('v', 153),
-        ('u', 467),
-        ('r', 899),
-        ('s', 669),
-        ('f', 230),
-        ('p', 367),
-        ('w', 195),
-        ('o', 754),
-        ('b', 281),
-        ('t', 729),
-        ('g', 311),
-        ('k', 210),
         ('e', 1233),
-        ('h', 389),
-        ('i', 671),
-        ('m', 316),
-        ('d', 393),
-        ('n', 575),
-        ('j', 27),
+        ('a', 979),
+        ('r', 899),
+        ('o', 754),
+        ('t', 729),
         ('l', 719),
+        ('i', 671),
+        ('s', 669),
+        ('n', 575),
         ('c', 477),
-        ('q', 29),
+        ('u', 467),
         ('y', 425),
-        ('x', 37),
+        ('d', 393),
+        ('h', 389),
+        ('p', 367),
+        ('m', 316),
+        ('g', 311),
+        ('b', 281),
+        ('f', 230),
+        ('k', 210),
+        ('w', 195),
+        ('v', 153),
         ('z', 40),
+        ('x', 37),
+        ('q', 29),
+        ('j', 27),
     ]);
     let word = "hello";
     let got = score_word(word, &letter_frequency);
     let expected: usize = 1233 + 389 + 719 + 754;
     assert_eq!(expected, got);
+}
+
+#[test]
+fn test_guess_word_1() {
+    // This is a word we should guess in one
+    let word_to_guess = "later";
+
+    let input_str =
+        std::fs::read_to_string("allowed_words.txt").expect("Could not read dictionary");
+
+    let words: Vec<&str> = input_str.lines().collect();
+
+    // Get the frequency of letters in the target list
+    let letter_frequency = words.iter().flat_map(|s| s.chars()).counts();
+
+    // Score the words, and sort them by their score, highest to smallest.
+    let valid_words: Vec<&str> = words
+        .iter()
+        .map(|word| (word, score_word(word, &letter_frequency)))
+        .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
+        .map(|(word, _)| *word)
+        .collect();
+
+    let got = guess_word(word_to_guess, &valid_words);
+    assert_eq!(1, got);
+}
+
+#[test]
+fn test_guess_word_2() {
+    // This is a word we should guess in 2
+    let word_to_guess = "irate";
+
+    let input_str =
+        std::fs::read_to_string("allowed_words.txt").expect("Could not read dictionary");
+
+    let words: Vec<&str> = input_str.lines().collect();
+
+    // Get the frequency of letters in the target list
+    let letter_frequency = words.iter().flat_map(|s| s.chars()).counts();
+
+    // Score the words, and sort them by their score, highest to smallest.
+    let valid_words: Vec<&str> = words
+        .iter()
+        .map(|word| (word, score_word(word, &letter_frequency)))
+        .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
+        .map(|(word, _)| *word)
+        .collect();
+
+    let got = guess_word(word_to_guess, &valid_words);
+    assert_eq!(2, got);
+}
+
+#[test]
+fn test_guess_word_3() {
+    // This is a word we should guess in 3
+    let word_to_guess = "crimp";
+
+    let input_str =
+        std::fs::read_to_string("allowed_words.txt").expect("Could not read dictionary");
+
+    let words: Vec<&str> = input_str.lines().collect();
+
+    // Get the frequency of letters in the target list
+    let letter_frequency = words.iter().flat_map(|s| s.chars()).counts();
+
+    // Score the words, and sort them by their score, highest to smallest.
+    let valid_words: Vec<&str> = words
+        .iter()
+        .map(|word| (word, score_word(word, &letter_frequency)))
+        .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
+        .map(|(word, _)| *word)
+        .collect();
+
+    let got = guess_word(word_to_guess, &valid_words);
+    assert_eq!(3, got);
 }
