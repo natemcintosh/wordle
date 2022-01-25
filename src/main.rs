@@ -455,7 +455,7 @@ fn main() {
     );
 
     // Get the user's input
-    let user_input = get_word_input();
+    let mut user_input = get_word_input();
 
     // Update which letters can be used where
     let r = update_available_letters(&user_input, &word_options);
@@ -473,14 +473,14 @@ fn main() {
 
     // Loop for the remaining 4 turns
     for round in 1..=4 {
-        if round == 1 {
+        if round != 1 {
             // Ask the user for input
             println!("\nPlease enter your input letters and their color");
             println!("The words suggested are in order of most helpful to least");
-        }
 
-        // Get the user's input
-        let user_input = get_word_input();
+            // Get the user's input
+            user_input = get_word_input();
+        }
 
         // Update which letters can be used where
         let r = update_available_letters(&user_input, &word_options);
@@ -489,6 +489,9 @@ fn main() {
 
         // Update the list of available words
         mut_valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+        // Tell the user about them
+        println!("\n\n{:?}", &mut_valid_words);
 
         // Exit if no more words are available
         if mut_valid_words.is_empty() {
