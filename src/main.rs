@@ -298,7 +298,9 @@ fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
 }
 
 /// This program will help you solve wordle more quickly.
-/// Run with no arguments to have it help you.
+/// Run with no arguments to have it help you. You can optionally run in "hard mode", or
+/// run the efficiency tests, and tell you how many guesses were required for each word,
+/// in each mode.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -306,9 +308,9 @@ struct Args {
     #[clap(short, long)]
     run_tests: bool,
 
-    /// Use the alternative method
-    #[clap(short, long)]
-    alternative_method: bool,
+    /// Use the hard mode method
+    #[clap(long)]
+    hard_mode: bool,
 }
 
 fn main() {
@@ -323,12 +325,14 @@ fn main() {
     let letter_frequency = words.iter().flat_map(|s| s.chars()).counts();
 
     // Score the words, and sort them by their score, highest to smallest.
-    let mut valid_words: Vec<&str> = words
+    let valid_words: Vec<&str> = words
         .iter()
         .map(|word| (word, score_word(word, &letter_frequency)))
         .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
         .map(|(word, _)| *word)
         .collect();
+
+    let mut mut_valid_words = valid_words.clone();
 
     let args = Args::parse();
     if args.run_tests {
@@ -336,7 +340,7 @@ fn main() {
         let test_time = std::time::Instant::now();
 
         // Print out headers
-        println!("word,n_guesses");
+        println!("word,n_hard_mode_guesses");
 
         // Count how long it takes to guess each word
         valid_words
@@ -345,29 +349,8 @@ fn main() {
             .sorted_by(|(_, count1), (_, count2)| Ord::cmp(count1, count2))
             .for_each(|(word, count)| println!("{word},{count}"));
 
-        // Print out how long it took to guess for all words
-        println!(
-            "Testing {} words took {} ms",
-            valid_words.len(),
-            test_time.elapsed().as_millis()
-        );
-
-        // Print out how long it took to run everything
-        println!(
-            "Running the program took {} ms",
-            start_time.elapsed().as_millis()
-        );
-
-        // Exit
-        return;
-    }
-
-    if args.alternative_method {
-        // Start a timer for the tests
-        let test_time = std::time::Instant::now();
-
         // Print out headers
-        println!("word,n_guesses");
+        println!("\n\n\nword,n_easy_mode_guesses");
 
         // Count how long it takes to guess each word
         valid_words
@@ -393,9 +376,6 @@ fn main() {
         return;
     }
 
-    let best_starting_word = valid_words[0];
-    println!("The best starting word is {best_starting_word}");
-
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut word_options: Vec<HashSet<char>> = vec![
         alphabet.clone(),
@@ -407,11 +387,97 @@ fn main() {
 
     println!("Startup took {} ms", start_time.elapsed().as_millis());
 
-    // Now the main loop
-    for _ in 1..=6 {
-        // Ask the user for input
-        println!("\nPlease enter your input letters and their color");
-        println!("The words suggested are in order of most helpful to least");
+    if args.hard_mode {
+        // Now the main loop
+        for _ in 1..=6 {
+            // Ask the user for input
+            println!("\nPlease enter your input letters and their color");
+            println!("The words suggested are in order of most helpful to least");
+
+            // Get the user's input
+            let user_input = get_word_input();
+
+            // Update which letters can be used where
+            let r = update_available_letters(&user_input, &word_options);
+            word_options = r.0;
+            let yellow_letters = r.1;
+
+            // Update the list of available words
+            mut_valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+            // Tell the user about them
+            println!("\n\n{:?}", &valid_words);
+
+            // Exit if `valid_words.len() <= 1`
+            if valid_words.len() <= 1 {
+                break;
+            }
+        }
+
+        // Exit
+        return;
+    }
+
+    // Get the best starting word, and the next best word after that
+    let best_starting_word = valid_words.first().expect("No valid words");
+    let second_word = valid_words
+        .iter()
+        .find(|&&s| !s.chars().any(|c| best_starting_word.contains(c)))
+        .expect("Could not find a second best word");
+
+    // Tell the user to input the best_starting_word, and enter the data from the site
+    println!(
+        "Please type '{}' into the site, and then enter the data from the site",
+        best_starting_word
+    );
+
+    // Mimic the user's input
+    let user_input = get_word_input();
+
+    // Update which letters can be used where
+    let r = update_available_letters(&user_input, &word_options);
+    word_options = r.0;
+    let yellow_letters = r.1;
+
+    // Update the list of available words
+    mut_valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    // If there's only one word left in valid_words, then print it and exit
+    if valid_words.len() == 1 {
+        println!("{}", valid_words[0]);
+        return;
+    }
+
+    // Tell the user to input the second_word, and enter the data from the site
+    println!(
+        "\nPlease type '{}' into the site, and then enter the data from the site",
+        second_word
+    );
+
+    // Get the user's input
+    let user_input = get_word_input();
+
+    // Update which letters can be used where
+    let r = update_available_letters(&user_input, &word_options);
+    word_options = r.0;
+    let yellow_letters = r.1;
+
+    // Update the list of available words
+    mut_valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    // If there's only one word left in valid_words, then print it and exit
+    if mut_valid_words.len() == 1 {
+        println!("{}", mut_valid_words[0]);
+        return;
+    }
+
+    // Loop for the remaining 4 turns
+    for round in 1..=4 {
+        if round == 1 {
+            // Ask the user for input
+            println!("\nPlease enter your input letters and their color");
+            println!("The words suggested are in order of most helpful to least");
+        }
 
         // Get the user's input
         let user_input = get_word_input();
@@ -422,13 +488,10 @@ fn main() {
         let yellow_letters = r.1;
 
         // Update the list of available words
-        valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+        mut_valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
 
-        // Tell the user about them
-        println!("\n\n{:?}", &valid_words);
-
-        // Exit if `valid_words.len() <= 1`
-        if valid_words.len() <= 1 {
+        // Exit if no more words are available
+        if mut_valid_words.is_empty() {
             break;
         }
     }
