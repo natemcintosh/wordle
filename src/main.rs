@@ -200,9 +200,9 @@ fn guess_word(word_to_guess: &str, input_words: &[&str]) -> u8 {
 /// first option, and then the next best word that contains none of the same letters
 /// as in the first. E.g. "later" and then "sonic". It then continues on from there as
 /// done before
-fn method_2(words_in: &[&str]) {
+fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
     // Make a mutable copy of `valid_words`
-    let mut valid_words: Vec<&str> = words_in.iter().copied().collect();
+    let mut valid_words: Vec<&str> = input_words.iter().copied().collect();
 
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut word_options: Vec<HashSet<char>> = vec![
@@ -215,16 +215,13 @@ fn method_2(words_in: &[&str]) {
 
     // Get the best starting word, and the next best word after that
     let best_starting_word = valid_words[0];
-    let second_word = words_in
+    let second_word = input_words
         .iter()
         .find(|&&s| !s.chars().any(|c| best_starting_word.contains(c)))
         .expect("Could not find a second best word");
 
-    println!("First enter '{best_starting_word}'");
-    println!("What is the result?");
-
-    // Get the user's input
-    let user_input = get_word_input();
+    // Mimic the user's input
+    let user_input = mimic_user_input(word_to_guess, best_starting_word);
 
     // Update which letters can be used where
     let r = update_available_letters(&user_input, &word_options);
@@ -234,11 +231,8 @@ fn method_2(words_in: &[&str]) {
     // Update the list of available words
     valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
 
-    println!("\nNow enter '{}'", second_word);
-    println!("What is the result?");
-
     // Get the user's input
-    let user_input = get_word_input();
+    let user_input = mimic_user_input(word_to_guess, second_word);
 
     // Update which letters can be used where
     let r = update_available_letters(&user_input, &word_options);
@@ -247,15 +241,25 @@ fn method_2(words_in: &[&str]) {
 
     // Update the list of available words
     valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    // Create the current guess
+    let mut current_guess = valid_words[0];
+
+    // The guess count
+    let mut n_guesses: u8 = 1;
 
     // Loop for the remaining 4 turns
     for _ in 1..=4 {
-        // Ask the user for input
-        println!("\nPlease enter your input letters and their color");
-        println!("The words suggested are in order of most helpful to least");
+        // Update number of guesses
+        n_guesses += 1;
+
+        // Exit if correct guess
+        if current_guess == word_to_guess {
+            return n_guesses;
+        }
 
         // Get the user's input
-        let user_input = get_word_input();
+        let user_input = mimic_user_input(word_to_guess, current_guess);
 
         // Update which letters can be used where
         let r = update_available_letters(&user_input, &word_options);
@@ -265,14 +269,16 @@ fn method_2(words_in: &[&str]) {
         // Update the list of available words
         valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
 
-        // Tell the user about them
-        println!("\n\n{:?}", &valid_words);
-
-        // Exit if `valid_words.len() <= 1`
-        if valid_words.len() <= 1 {
+        // Exit if no more words are available
+        if valid_words.is_empty() {
             break;
         }
+
+        // Update current best guess.
+        current_guess = valid_words[0];
     }
+
+    n_guesses
 }
 
 /// This program will help you solve wordle more quickly.
@@ -341,7 +347,33 @@ fn main() {
     }
 
     if args.alternative_method {
-        method_2(&valid_words);
+        // Start a timer for the tests
+        let test_time = std::time::Instant::now();
+
+        // Print out headers
+        println!("word,n_guesses");
+
+        // Count how long it takes to guess each word
+        valid_words
+            .iter()
+            .map(|word| (*word, guess_word_method_2(word, &valid_words)))
+            .sorted_by(|(_, count1), (_, count2)| Ord::cmp(count1, count2))
+            .for_each(|(word, count)| println!("{word},{count}"));
+
+        // Print out how long it took to guess for all words
+        println!(
+            "Testing {} words took {} ms",
+            valid_words.len(),
+            test_time.elapsed().as_millis()
+        );
+
+        // Print out how long it took to run everything
+        println!(
+            "Running the program took {} ms",
+            start_time.elapsed().as_millis()
+        );
+
+        // Exit
         return;
     }
 
