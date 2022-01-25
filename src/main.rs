@@ -340,24 +340,22 @@ fn main() {
         let test_time = std::time::Instant::now();
 
         // Print out headers
-        println!("word,n_hard_mode_guesses");
+        println!("word,n_easy_mode_guesses,n_hard_mode_guesses");
 
         // Count how long it takes to guess each word
         valid_words
             .iter()
-            .map(|word| (*word, guess_word(word, &valid_words)))
-            .sorted_by(|(_, count1), (_, count2)| Ord::cmp(count1, count2))
-            .for_each(|(word, count)| println!("{word},{count}"));
-
-        // Print out headers
-        println!("\n\n\nword,n_easy_mode_guesses");
-
-        // Count how long it takes to guess each word
-        valid_words
-            .iter()
-            .map(|word| (*word, guess_word_method_2(word, &valid_words)))
-            .sorted_by(|(_, count1), (_, count2)| Ord::cmp(count1, count2))
-            .for_each(|(word, count)| println!("{word},{count}"));
+            .map(|word| {
+                (
+                    *word,
+                    guess_word_method_2(word, &valid_words),
+                    guess_word(word, &valid_words),
+                )
+            })
+            .sorted_by(|(_, count1, _), (_, count2, _)| Ord::cmp(count1, count2))
+            .for_each(|(word, easy_count, hard_count)| {
+                println!("{word},{easy_count},{hard_count}")
+            });
 
         // Print out how long it took to guess for all words
         println!(
