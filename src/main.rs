@@ -220,6 +220,13 @@ fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
         .find(|&&s| !s.chars().any(|c| best_starting_word.contains(c)))
         .expect("Could not find a second best word");
 
+    // Return 1 or 2 if either best or second is the word_to_guess
+    if best_starting_word == word_to_guess {
+        return 1;
+    } else if *second_word == word_to_guess {
+        return 2;
+    }
+
     // Mimic the user's input
     let user_input = mimic_user_input(word_to_guess, best_starting_word);
 
@@ -230,6 +237,11 @@ fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
 
     // Update the list of available words
     valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
+
+    // If there's just one item left in valid_words, then we know it'll take two guesses
+    if valid_words.len() == 1 {
+        return 2;
+    }
 
     // Get the user's input
     let user_input = mimic_user_input(word_to_guess, second_word);
@@ -242,11 +254,15 @@ fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
     // Update the list of available words
     valid_words.retain(|s| word_is_valid(s, &word_options, &yellow_letters));
 
+    if valid_words.len() == 1 {
+        return 3;
+    }
+
     // Create the current guess
     let mut current_guess = valid_words[0];
 
-    // The guess count
-    let mut n_guesses: u8 = 1;
+    // The guess count. They have to put in two guesses, to get here, and then a new guess
+    let mut n_guesses: u8 = 2;
 
     // Loop for the remaining 4 turns
     for _ in 1..=4 {
