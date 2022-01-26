@@ -442,7 +442,7 @@ fn main() {
 
     // If there's only one word left in valid_words, then print it and exit
     if valid_words.len() == 1 {
-        println!("{}", valid_words[0]);
+        println!("\n{}", valid_words[0]);
         return;
     }
 
@@ -465,7 +465,7 @@ fn main() {
 
     // If there's only one word left in valid_words, then print it and exit
     if mut_valid_words.len() == 1 {
-        println!("{}", mut_valid_words[0]);
+        println!("\n{}", mut_valid_words[0]);
         return;
     }
 
@@ -492,7 +492,7 @@ fn main() {
         println!("\n\n{:?}", &mut_valid_words);
 
         // Exit if no more words are available
-        if mut_valid_words.is_empty() {
+        if mut_valid_words.len() <= 1 {
             break;
         }
     }
