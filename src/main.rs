@@ -354,7 +354,7 @@ fn main() {
             })
             .sorted_by(|(_, count1, _), (_, count2, _)| Ord::cmp(count1, count2))
             .for_each(|(word, easy_count, hard_count)| {
-                println!("{word},{easy_count},{hard_count}")
+                println!("{word},{easy_count},{hard_count}");
             });
 
         // Print out how long it took to guess for all words
