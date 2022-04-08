@@ -155,7 +155,7 @@ fn guess_word(word_to_guess: &str, input_words: &[&str]) -> u8 {
         alphabet,
     ];
 
-    let mut valid_words: Vec<&str> = input_words.iter().copied().collect();
+    let mut valid_words: Vec<&str> = input_words.to_vec();
 
     let mut current_guess = valid_words[0];
 
@@ -202,7 +202,7 @@ fn guess_word(word_to_guess: &str, input_words: &[&str]) -> u8 {
 /// done before
 fn guess_word_method_2(word_to_guess: &str, input_words: &[&str]) -> u8 {
     // Make a mutable copy of `valid_words`
-    let mut valid_words: Vec<&str> = input_words.iter().copied().collect();
+    let mut valid_words: Vec<&str> = input_words.to_vec();
 
     let alphabet: HashSet<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut word_options: Vec<HashSet<char>> = vec![
